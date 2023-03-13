@@ -1,19 +1,22 @@
 package com.itheima.reggie.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.ser.Serializers;
+import com.itheima.reggie.common.BaseContext;
 import com.itheima.reggie.common.R;
 import com.itheima.reggie.entity.Employee;
 import com.itheima.reggie.service.EmployeeService;
+import com.itheima.reggie.utils.ValidateCodeUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.util.DigestUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
-import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @RestController
@@ -22,42 +25,66 @@ public class EmployeeController {
 
     @Autowired
     private EmployeeService employeeService;
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+
+    @PostMapping("/sendMsg")
+    public R<String> sendMsg(@RequestBody Employee employee, HttpServletRequest request) {
+        String phone = employee.getPhone();
+        if (phone != null) {
+            //生成短信验证码
+            String code = ValidateCodeUtils.generateValidateCode(4).toString();
+            log.info(code);
+            //调用阿里云发送短信
+//            SMSUtils.sendMessage("签名","模板code",phone,code);
+            //生成的验证码保存到Session
+            //request.getSession().setAttribute(phone, code);
+            redisTemplate.opsForValue().set(phone, code, 5, TimeUnit.MINUTES);
+            return R.success("验证码发送成功");
+        }
+        return R.error("短信发送失败");
+    }
 
     /**
      * 登陆功能实现
+     *
      * @param request
-     * @param employee
+     * @param map
      * @return
      */
     @PostMapping("/login")
-    public R<Employee> login(HttpServletRequest request, @RequestBody Employee employee) {
-        //1.将页面提交的password进行md5加密处理
-        String password = employee.getPassword();
-        password = DigestUtils.md5DigestAsHex(password.getBytes());
+    public R<Employee> login(HttpServletRequest request, @RequestBody Map map) {
+        String phone = map.get("phone").toString();
+        String code = map.get("code").toString();
 
-        //2.根据页面提交的的用户名username查询数据库
-        LambdaQueryWrapper<Employee> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Employee::getUsername, employee.getUsername());
-        //通过上述方法来获取数据库中所有数据，不能使用getById因为提供的是userName
-        Employee emp = employeeService.getOne(queryWrapper);
 
-        //3.如果没有查询到则返回登陆失败结果
-        if (emp == null) {
-            return R.error("登陆失败，用户名不存在。");
+        Object codeSession = redisTemplate.opsForValue().get(phone);
+        //判断验证啊是否一致
+        if (code != null && code.equals(codeSession)) {
+            //一致后判断是否为新用户是的话保存用户信息
+            LambdaQueryWrapper<Employee> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(Employee::getPhone, phone);
+            Employee employee = employeeService.getOne(queryWrapper);
+            if (employee == null) {
+                employee = new Employee();
+                employee.setPhone(phone);
+                employee.setName("员工");
+                employee.setSex("男");
+                employee.setStatus(1);
+                employee.setIdNumber("610113200009211611");
+                employeeService.save(employee);
+            }
+            if (employee.getStatus() == 0) {
+                return R.error("账户已被禁用");
+            }
+            //将userID存入session
+            request.getSession().setAttribute("employee", employee.getId());
+            //登陆成功删除验证码
+            redisTemplate.delete(phone);
+            return R.success(employee);
         }
-
-        //4.密码比对，如果不一样返回失败
-        if (!emp.getPassword().equals(password)) {
-            return R.error("登陆失败，密码错误");
-        }
-
-        //5.查看员工状态status如果禁用则返回已禁用
-        if (emp.getStatus() == 0) {
-            return R.error("账户已被禁用");
-        }
-        //6.登陆成功，将员工ID存入Session并返回登陆成功结果
-        request.getSession().setAttribute("employee", emp.getId());
-        return R.success(emp);
+        return R.error("登录验证码错误");
     }
 
     /**
@@ -76,29 +103,14 @@ public class EmployeeController {
     /**
      * 新增功能
      *
-     * @param request
+     * @param
      * @param employee
      * @return
      */
     @PostMapping
-    public R<String> save(HttpServletRequest request, @RequestBody Employee employee) {
+    public R<String> save( @RequestBody Employee employee) {
         log.info(employee.toString());
-        //1.设置密码初始值
-        employee.setPassword(DigestUtils.md5DigestAsHex("123456".getBytes()));
-
-//        employee.setCreateTime(LocalDateTime.now());
-//        employee.setUpdateTime(LocalDateTime.now());
-//         //获取当前登录用户的ID
-//        Long empID = (Long) request.getSession().getAttribute("employee");
-//
-//        employee.setCreateUser(empID);
-//        employee.setUpdateUser(empID);
-
-        try {
-            employeeService.save(employee);
-        } catch (Exception e) {
-           R.error("新增员工失败");
-        }
+        employeeService.save(employee);
         return R.success("添加成功");
     }
 
@@ -123,7 +135,7 @@ public class EmployeeController {
         //添加过滤条件就相当于在sql语句后加上了like name = y;
         queryWrapper.like(!StringUtils.isEmpty(name), Employee::getName, name);
         //添加排序条件
-        queryWrapper.orderByDesc(Employee::getCreateTime);
+        queryWrapper.orderByDesc(Employee::getId);
         //调用查询
         employeeService.page(pageInfo, queryWrapper);
 
@@ -140,15 +152,15 @@ public class EmployeeController {
      * @return
      */
     @PutMapping
-    public R<String> update(HttpServletRequest request, @RequestBody Employee employee) {
-        log.info(employee.toString());
-//        Long empId = (Long) request.getSession().getAttribute("employee");
+    public R<String> update( @RequestBody Employee employee) {
 
-//        employee.setUpdateUser(empId);
-//        employee.setUpdateTime(LocalDateTime.now());
-
-        employeeService.updateById(employee);
-        return R.success("信息修改成功");
+        Long currentId = BaseContext.getCurrentId();
+        if (currentId != 1){
+            return R.error("您没有权限");
+        }else {
+            employeeService.updateById(employee);
+            return R.success("信息修改成功");
+        }
     }
 
 

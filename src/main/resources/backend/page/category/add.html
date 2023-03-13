@@ -30,19 +30,19 @@
 
                     <el-input
                             v-model="ruleForm.id"
-                            placeholder="请输入账户名"
+                            placeholder="请输入要充值的账户名"
                             maxlength="10"
                     />
                 </el-form-item>
             </div>
             <div>
                 <el-form-item
-                        label="消费金额:"
+                        label="充值金额:"
                         prop="balance"
                 >
                     <el-input
                             v-model="ruleForm.balance"
-                            placeholder="请设输入消费金额"
+                            placeholder="请设输入要充值的金额"
                     />
                 </el-form-item>
             </div>
@@ -56,7 +56,7 @@
                             type="primary"
                             @click="submitForm('ruleForm')"
                     >
-                        确认
+                        充值
                     </el-button>
                 </el-form-item>
             </div>
@@ -72,7 +72,7 @@
 <script src="../../js/request.js"></script>
 <script src="../../js/validate.js"></script>
 <script src="../../js/index.js"></script>
-<script src="../../api/combo.js"></script>
+<script src="../../api/category.js"></script>
 <script>
     new Vue({
         el: '#food-add-app',
@@ -97,13 +97,11 @@
                         {pattern: /^\d{10}$/, message: '账号必须为10位纯数字', trigger: 'blur'}
                     ],
                     balance: [
-                        {required: true, message: '请输入消费金额', trigger: 'blur'},
+                        {required: true, message: '请输入充值金额', trigger: 'blur'},
                         {
                             validator: (rule, value, callback) => {
-                                if (value <= 0) {
-                                    callback(new Error('消费金额必须大于0元'));
-                                } else if (value > 50) {
-                                    callback(new Error('单次消费不能超过50元'));
+                                if (value < 1 || value > 500) {
+                                    callback(new Error('充值金额必须在1-500之间'));
                                 } else {
                                     callback();
                                 }
@@ -123,15 +121,15 @@
             submitForm(formName) {
                 this.$refs[formName].validate((valid) => {
                     if (valid) {
-                        this.$confirm('确认账户名是否正确?', '提示', {
+                        this.$confirm('确认为该账户充值?', '提示', {
                             'confirmButtonText': '确定',
                             'cancelButtonText': '取消',
                             'type': 'warning'
                         }).then(() => {
-                                let params = {...this.ruleForm}
-                                params.id = this.ruleForm.id
-                                params.balance = this.ruleForm.balance
-                                reduceBalance(params).then(res => {
+                            let params = {...this.ruleForm}
+                            params.id = this.ruleForm.id
+                            params.balance = this.ruleForm.balance
+                                addBalance(params).then(res => {
                                     if (res.code === 1) {
                                         this.$message.success(res.data)
                                         this.goBack()
@@ -144,7 +142,7 @@
                                 })
                             }
                         )
-                    } else {
+                    }else {
                         return false
                     }
                 });

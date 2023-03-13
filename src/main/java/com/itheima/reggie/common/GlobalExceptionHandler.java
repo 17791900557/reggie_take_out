@@ -14,11 +14,17 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SQLIntegrityConstraintViolationException.class)
     public R<String> exceptionHandler(SQLIntegrityConstraintViolationException ex) {
-        if (ex.getMessage().contains("Duplicate entry")) {
+        if (ex.getMessage().contains("for key")) {
             String[] split = ex.getMessage().split(" ");
-            return R.error(split[2] + "已存在");
+            System.out.println(split[5]);
+            if (split[5].equals("'employee.phone'")){
+                return R.error( "手机号已存在");
+            }else if (split[5].equals("'employee.id_number'")){
+                return R.error("身份证号已存在");
+            }else if (split[5].equals("'account.PRIMARY'")){
+                return R.error("账户已存在");
+            }
         }
-
         return R.error("未知错误");
     }
 

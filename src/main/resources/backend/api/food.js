@@ -1,81 +1,64 @@
 // 查询列表接口
-const getDishPage = (params) => {
+const getAccountPage = (params) => {
   return $axios({
-    url: '/dish/page',
+    url: '/account/page',
     method: 'get',
     params
   })
 }
 
 // 删除接口
-const deleteDish = (ids) => {
+const deleteAccount = (ids) => {
   return $axios({
-    url: '/dish',
+    url: '/account',
     method: 'delete',
     params: { ids }
   })
 }
 
 // 修改接口
-const editDish = (params) => {
+const editAccount = (id,params) => {
   return $axios({
-    url: '/dish',
+    url: `/account/${id}`,
     method: 'put',
-    data: { ...params }
+    data: {...params }
   })
 }
 
 // 新增接口
-const addDish = (params) => {
+const addAccount = (params) => {
   return $axios({
-    url: '/dish',
+    url: '/account',
     method: 'post',
     data: { ...params }
   })
 }
 
 // 查询详情
-const queryDishById = (id) => {
+const queryAccountById = (id) => {
   return $axios({
-    url: `/dish/${id}`,
+    url: `/account/${id}`,
     method: 'get'
   })
 }
 
-// 获取菜品分类列表
-const getCategoryList = (params) => {
-  return $axios({
-    url: '/category/list',
-    method: 'get',
-    params
-  })
-}
+
 
 // 查菜品列表的接口
-const queryDishList = (params) => {
+const queryAccountList = (params) => {
   return $axios({
-    url: '/dish/list',
+    url: '/account/list',
     method: 'get',
     params
   })
 }
 
-// 文件down预览
-const commonDownload = (params) => {
-  return $axios({
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-    },
-    url: '/common/download',
-    method: 'get',
-    params
-  })
-}
+
 
 // 起售停售---批量起售停售接口
-const dishStatusByStatus = (params) => {
+const AccountStatusByStatus = (params) => {
   return $axios({
-    url: `/dish/status/${params.status}`,
+    url: `/account/status/${params.status}`,
     method: 'post',
     params: { ids: params.id }
   })

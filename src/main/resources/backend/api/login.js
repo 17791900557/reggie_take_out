@@ -12,3 +12,10 @@ function logoutApi(){
     'method': 'post',
   })
 }
+function sendMsgApi(data){
+  return $axios({
+    'url': '/employee/sendMsg',
+    'method': 'post',
+    data
+  })
+}

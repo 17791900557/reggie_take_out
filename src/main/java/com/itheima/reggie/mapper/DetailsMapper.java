@@ -1,9 +1,10 @@
 package com.itheima.reggie.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.itheima.reggie.entity.Dish;
+
+import com.itheima.reggie.entity.Details;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface DishMapper extends BaseMapper<Dish> {
+public interface DetailsMapper extends BaseMapper<Details> {
 }

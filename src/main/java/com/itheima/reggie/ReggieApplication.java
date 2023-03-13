@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @Slf4j//lombok提供的日志技术
 @SpringBootApplication
 @ServletComponentScan//扫描过滤器
-@EnableTransactionManagement
+@EnableTransactionManagement//开启事务
 public class ReggieApplication {
     public static void main(String[] args) {
         SpringApplication.run(ReggieApplication.class,args);
